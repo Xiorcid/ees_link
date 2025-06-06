@@ -49,15 +49,15 @@ void can_send_accel_data(){
   Serial.print("Sending ACCEL packet ... ");
   CAN.beginPacket(0xC3);
 
-  uint16_t x = accel_x*100;
+  int16_t x = accel_x*100;
   CAN.write((x >> 8) & 0xFF);
   CAN.write(x & 0xFF);
 
-  uint16_t y = accel_y*100;
+  int16_t y = accel_y*100;
   CAN.write((y >> 8) & 0xFF);
   CAN.write(y & 0xFF);
 
-  uint16_t z = accel_z*100;
+  int16_t z = accel_z*100;
   CAN.write((z >> 8) & 0xFF);
   CAN.write(z & 0xFF);
 

@@ -47,7 +47,7 @@
 
 #define CNT_HALL                            (23)
 
-#define ACCEL_ADDR                          (0x1D)
+#define ACCEL_ADDR                          (0x1C)
 // // 127 is defined in GSM as the AUXVDD index
 // #define MODEM_GPS_ENABLE_GPIO               (4)
 // #define MODEM_GPS_ENABLE_LEVEL              (0)

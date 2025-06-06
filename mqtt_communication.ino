@@ -43,6 +43,7 @@ void mqtt_init(){
   SerialMon.print("Waiting for network...");
   if (!modem.waitForNetwork()) {
       SerialMon.println(" fail");
+      digitalWrite(LED_ERR, HIGH);
       delay(10000);
       return;
   }
@@ -68,7 +69,7 @@ void mqtt_init(){
   }
 
   // MQTT Broker setup
-  mqtt.setServer(broker, 1883);
+  mqtt.setServer(broker, mqtt_port);
 }
 
 void mqtt_update(){

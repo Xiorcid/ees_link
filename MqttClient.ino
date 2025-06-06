@@ -12,8 +12,11 @@
 #define TINY_GSM_USE_GPRS true
 #define TINY_GSM_USE_WIFI false
 
+#define PSU_DATA_TIME 1000
+#define GPS_DATA_TIME 5000
+
 // set GSM PIN, if any
-#define GSM_PIN "2618"
+#define GSM_PIN "1528"
 
 #include <TinyGsmClient.h>
 #include <PubSubClient.h>
@@ -29,10 +32,11 @@
 #include "SparkFun_MMA8452Q.h"    // Click here to get the library: http://librarymanager/All#SparkFun_MMA8452Q
 #include <SPIFFS.h> // 3 MB APP, 1 MB SPIFFS
 
-const char *topicOutGPS      = "GPS_OUT/1";
-const char *topicOutPSU      = "PSU_OUT/1";
-const char *topicInPSU       = "PSU_IN/1";
-const char *topicSystem      = "SUS_OUT/1";
+const char *topicOutGPS      = "GPS_OUT/7";
+const char *topicOutAccel    = "Accel_OUT/7";
+const char *topicOutPSU      = "PSU_OUT/7";
+const char *topicInPSU       = "PSU_IN/7";
+const char *topicSystem      = "SUS_OUT/7";
 
 GyverPortal ui;
 
@@ -42,6 +46,7 @@ MMA8452Q accel(ACCEL_ADDR);
 
 TinyGsm        modem(SerialAT);
 TinyGsmClient client(modem);
+//TinyGsmClientSecure client(modem);
 PubSubClient  mqtt(client);
 
 struct PSU_REGs{
@@ -62,6 +67,11 @@ float VBat = 0;
 
 uint32_t lastReconnectAttempt = 0;
 
+uint32_t zeroEnergy;
+uint32_t correctionEnergy;
+
+uint8_t resetReason = 0;
+
 FileData fs_data_FD(&SPIFFS, "/w_diam.dat", 'B', &fs_data, sizeof(fs_data));
 
 void mqttCallback(char *topic, byte *payload, unsigned int len){
@@ -75,6 +85,7 @@ void mqttCallback(char *topic, byte *payload, unsigned int len){
   for (int i = 0; i < len; i++){
     pl += (char)(payload[i]);
   }
+  
   parsePSUInputData(pl);
 }
 
@@ -110,7 +121,7 @@ void loop(){
   static uint32_t gps_tmr;
   static bool flg;
   mqtt_update();
-  if (millis() - gps_tmr > 5000){
+  if (millis() - gps_tmr > GPS_DATA_TIME){
     if (gps_update()){
       char message[256];
       buildGPSTelemetryPackage().toCharArray(message, 100);
@@ -130,7 +141,7 @@ void loop(){
 
   ui.tick();
 
-  if (millis() - tmr > 1000){
+  if (millis() - tmr > PSU_DATA_TIME){
     // can_send_hello();
     char message[256];
     send_speed();
@@ -149,6 +160,8 @@ void loop(){
 
     buildPSUTelemetryPackage().toCharArray(message, 100);
     mqtt.publish(topicOutPSU, message);
+    buildAccelTelemetryPackage().toCharArray(message, 100);
+    mqtt.publish(topicOutAccel, message);
     tmr = millis();
     
     getAccelData();
