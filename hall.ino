@@ -21,6 +21,6 @@ void send_speed(){
   float spd = get_speed();
   snprintf(message, sizeof(message), "SPD: %f", spd);
   can_send_speed_data(spd);
-  mqtt.publish(topicSystem, message);
+  // mqtt.publish(topicSystem, message);
   Serial.println(message);
 }

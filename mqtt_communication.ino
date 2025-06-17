@@ -84,6 +84,7 @@ void mqtt_update(){
       }
       if (modem.isNetworkConnected()) {
           SerialMon.println("Network re-connected");
+          signaliseException(GSM_RECONN);
           digitalWrite(LED_ERR, LOW);
       }
 
@@ -100,6 +101,7 @@ void mqtt_update(){
           }
           if (modem.isGprsConnected()) {
               SerialMon.println("GPRS reconnected");
+              signaliseException(GSM_RECONN);
               digitalWrite(LED_ERR, LOW);
           }
       }
@@ -120,6 +122,11 @@ void mqtt_update(){
   }
 
   mqtt.loop();
+
+  rssi = -113 + (modem.getSignalQuality() * 2);
+  Serial.print("Signal quality (RSSI): ");
+  Serial.print(rssi);
+  Serial.println(" dBm");
 }
 
 bool mqttConnect(){
@@ -134,7 +141,6 @@ bool mqttConnect(){
       return false;
   }
   SerialMon.println(" success");
-  // mqtt.publish(topicStatus, "Lilygo in network!");
   mqtt.subscribe(topicInPSU);
   return mqtt.connected();
 }
@@ -154,13 +160,36 @@ void send_crash_log() {
 
 void signaliseException(uint8_t type){
   switch (type){
-    case 0:
-      Serial.println("UART: OK");
-      mqtt.publish(topicSystem, "UART: OK");
+    case OK_INFO:
+      Serial.println("MQTT: OK");
+      mqtt.publish(topicSystem, "MQTT: OK");
       break;
-    case 1:
+    case CRC_ERROR:
       Serial.println("UART: CRC mismatch");
       mqtt.publish(topicSystem, "UART: CRC mismatch");
+      break;
+    case OL_ERROR:
+      Serial.println("UART: Over limit");
+      mqtt.publish(topicSystem, "UART: Over limit");
+      break;
+    case TIME_ERROR:
+      Serial.println("UART: Timeout");
+      mqtt.publish(topicSystem, "UART: Timeout");
+      break;
+    case PSU_IN_ERROR:
+      Serial.println("PSU: Invalid input");
+      mqtt.publish(topicSystem, "PSU: Invalid input");
+      break;
+    case CAN_ERROR:
+      Serial.println("CAN: Init failed");
+      mqtt.publish(topicSystem, "CAN: Init failed");
+      break;
+    case GSM_RECONN:
+      Serial.println("GSM: Network reconnected");
+      mqtt.publish(topicSystem, "GSM: Network reconnected");
+    case GPS_NODATA:
+      Serial.println("GPS: No data");
+      mqtt.publish(topicSystem, "GPS: No data");
       break;
   }
 }

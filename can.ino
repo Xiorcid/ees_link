@@ -4,23 +4,17 @@ void can_init(){
   CAN.setPins(CAN_RX, CAN_TX);
   if (!CAN.begin(500E3)) {
     Serial.println("Starting CAN failed!");
+    signaliseException(CAN_ERROR);
   }else{
     Serial.println("Starting CAN OK!");
+    isCANReady = true;
   }
 }
 
-// void can_send_hello(){
-//   Serial.print("Sending packet ... ");
-//   CAN.beginPacket(0x12);
-//   CAN.write('h');
-//   CAN.write('e');
-//   CAN.write('l');
-//   CAN.write('l');
-//   CAN.write('o');
-//   CAN.endPacket();
-// }
-
 void can_send_psu_data(uint8_t *data){
+  if(!isCANReady){
+    return;
+  }
   Serial.print("Sending PSU CAN packet ... ");
   CAN.beginPacket(0x12);
   // U
@@ -36,6 +30,9 @@ void can_send_psu_data(uint8_t *data){
 }
 
 void can_send_speed_data(float speed){
+  if(!isCANReady){
+    return;
+  }
   Serial.print("Sending SPD HAL packet ... ");
   CAN.beginPacket(0xED);
   uint16_t spd = speed*100;
@@ -46,6 +43,9 @@ void can_send_speed_data(float speed){
 }
 
 void can_send_accel_data(){
+  if(!isCANReady){
+    return;
+  }
   Serial.print("Sending ACCEL packet ... ");
   CAN.beginPacket(0xC3);
 

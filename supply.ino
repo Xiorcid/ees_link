@@ -2,6 +2,10 @@
 
 
 void setVoltage(uint16_t voltage){
+  if(voltage > 6000){
+    signaliseException(PSU_IN_ERROR);
+    return;
+  }
   uint8_t command[] = {0x01, 0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
   command[5] = voltage & 0xFF;
   command[4] = (voltage >> 8) & 0xFF;
@@ -13,6 +17,10 @@ void setVoltage(uint16_t voltage){
 }
 
 void setCurrent(uint16_t current){
+  if(current > 2100){
+    signaliseException(PSU_IN_ERROR);
+    return;
+  }
   uint8_t command[] = {0x01, 0x06, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00};
   command[5] = current & 0xFF;
   command[4] = (current >> 8) & 0xFF;
@@ -73,6 +81,8 @@ PSU_REGs readPSURegisters(){
   Serial2.write(command, sizeof(command));
 
   if(waitForResponse(false)){
+    signaliseException(TIME_ERROR);
+    pwr.areDataValid = false;
     return pwr;
   }
 
@@ -80,9 +90,10 @@ PSU_REGs readPSURegisters(){
     response[i] = Serial2.read();
     i++;
   }
-  // Serial.println(i);
+
   if ((i == 0) || ((response[i-1] << 8) | response[i-2]) != calculateCRC(response, i-2)){
-    signaliseException(1);
+    signaliseException(CRC_ERROR);
+    pwr.areDataValid = false;
     return pwr;
   }
 
@@ -91,8 +102,16 @@ PSU_REGs readPSURegisters(){
   pwr.actPower = (response[11] << 8) | response[12];
   pwr.actInVoltage = (response[13] << 8) | response[14];
   pwr.actOutEnergy = (response[19] << 8) | response[20];
-  can_send_psu_data(response);
 
+  if(pwr.actOutVoltage > 6000 || pwr.actOutVoltage < 0.00){
+    signaliseException(OL_ERROR);
+    pwr.areDataValid = false;
+    return pwr;
+  }
+
+  pwr.areDataValid = true;
+
+  can_send_psu_data(response);
   return pwr;
 }
 

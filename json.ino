@@ -25,6 +25,7 @@ String buildGPSTelemetryPackage(){
       gs["Lat"] = lat2*10000;
       gs["Lon"] = lon2*10000;
       gs["Spd"] = speed2;
+      gs["Sat"] = vsat2;
       // gs["Date"] = date;
       // gs["Time"] = time;
     gs.endObj();

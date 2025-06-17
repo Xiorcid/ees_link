@@ -48,6 +48,17 @@
 #define CNT_HALL                            (23)
 
 #define ACCEL_ADDR                          (0x1C)
+
+// ERROR CODES
+#define OK_INFO       0
+#define CRC_ERROR     1
+#define OL_ERROR      2
+#define TIME_ERROR    3
+#define PSU_IN_ERROR  4
+#define CAN_ERROR     5
+#define GSM_RECONN    6
+#define GPS_NODATA    7
+
 // // 127 is defined in GSM as the AUXVDD index
 // #define MODEM_GPS_ENABLE_GPIO               (4)
 // #define MODEM_GPS_ENABLE_LEVEL              (0)

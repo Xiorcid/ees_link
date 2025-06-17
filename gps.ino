@@ -32,10 +32,13 @@ bool gps_update(){
   if (modem.getGPS(&fixMode, &lat2, &lon2, &speed2, &alt2, &vsat2, &usat2, &accuracy2, &year2, &month2, &day2, &hour2, &min2, &sec2)) {
       Serial.print(lat2);
       Serial.print(" ");
-      Serial.println(lon2);
+      Serial.print(lon2);
+      Serial.print(" ");
+      Serial.println(vsat2);
       return true;
   } else {
       Serial.println("Couldn't get GPS/GNSS/GLONASS location.");
+      signaliseException(GPS_NODATA);
       return false;
   }
 }

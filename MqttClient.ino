@@ -12,14 +12,15 @@
 #define TINY_GSM_USE_GPRS true
 #define TINY_GSM_USE_WIFI false
 
-#define PSU_DATA_TIME 1000
-#define GPS_DATA_TIME 5000
+#define PSU_DATA_TIME 500
+#define GPS_DATA_TIME 500
 
 // set GSM PIN, if any
 #define GSM_PIN "1528"
 
 #include <TinyGsmClient.h>
 #include <PubSubClient.h>
+#include <buildTime.h>
 #include "CRC16.h"
 #include "CRC.h"
 #include <Ticker.h>
@@ -29,14 +30,8 @@
 #include <CAN.h>
 #include <FileData.h>
 #include <Wire.h>                 // Must include Wire library for I2C
-#include "SparkFun_MMA8452Q.h"    // Click here to get the library: http://librarymanager/All#SparkFun_MMA8452Q
+#include "SparkFun_MMA8452Q.h"    // Modification for other 845x family chips is necessary, also i2c address
 #include <SPIFFS.h> // 3 MB APP, 1 MB SPIFFS
-
-const char *topicOutGPS      = "GPS_OUT/7";
-const char *topicOutAccel    = "Accel_OUT/7";
-const char *topicOutPSU      = "PSU_OUT/7";
-const char *topicInPSU       = "PSU_IN/7";
-const char *topicSystem      = "SUS_OUT/7";
 
 GyverPortal ui;
 
@@ -46,7 +41,6 @@ MMA8452Q accel(ACCEL_ADDR);
 
 TinyGsm        modem(SerialAT);
 TinyGsmClient client(modem);
-//TinyGsmClientSecure client(modem);
 PubSubClient  mqtt(client);
 
 struct PSU_REGs{
@@ -55,6 +49,7 @@ struct PSU_REGs{
   uint16_t actPower;
   uint16_t actInVoltage;
   uint16_t actOutEnergy;
+  bool areDataValid;
 };
 PSU_REGs psu;
 
@@ -72,6 +67,11 @@ uint32_t correctionEnergy;
 
 uint8_t resetReason = 0;
 
+bool isAccelReady = false;
+bool isCANReady = false;
+
+int16_t rssi;
+
 FileData fs_data_FD(&SPIFFS, "/w_diam.dat", 'B', &fs_data, sizeof(fs_data));
 
 void mqttCallback(char *topic, byte *payload, unsigned int len){
@@ -85,6 +85,11 @@ void mqttCallback(char *topic, byte *payload, unsigned int len){
   for (int i = 0; i < len; i++){
     pl += (char)(payload[i]);
   }
+
+  signaliseException(OK_INFO);
+  char echo_buf[256];
+  pl.toCharArray(echo_buf, len);
+  mqtt.publish(topicSystem, echo_buf);
   
   parsePSUInputData(pl);
 }
@@ -94,10 +99,12 @@ void setup(){
   Serial2.begin(115200, SERIAL_8N1, 18, 19);
   Serial2.setTimeout(10);
 
+  Serial.printf("BUILD %02d%02d%d%d-%02d%02d\n", BUILD_DAY, BUILD_MONTH, BUILD_YEAR_CH2, BUILD_YEAR_CH3, BUILD_HOUR, BUILD_MIN);
+
   pinMode(LED_ERR, OUTPUT);
   pinMode(LED_ACT, OUTPUT);
   digitalWrite(LED_ERR, LOW);
-  digitalWrite(LED_ACT, HIGH);
+  digitalWrite(LED_ACT, LOW);
 
   SPIFFS.begin();
   fs_data_FD.read();
@@ -114,13 +121,17 @@ void setup(){
   mqtt_update();
   send_crash_log();
   hall_init();
+
+  digitalWrite(LED_ACT, HIGH);
 }
 
 void loop(){
   static uint32_t tmr;
   static uint32_t gps_tmr;
-  static bool flg;
+
   mqtt_update();
+  ui.tick();
+  
   if (millis() - gps_tmr > GPS_DATA_TIME){
     if (gps_update()){
       char message[256];
@@ -130,19 +141,7 @@ void loop(){
     gps_tmr = millis();
   }
 
-  if (Serial2.available()){
-    Serial.print(Serial2.read(), HEX);
-    Serial.print(" ");
-  }
-
-  if(Serial.available()){
-    setVoltage(Serial.parseInt());
-  }
-
-  ui.tick();
-
   if (millis() - tmr > PSU_DATA_TIME){
-    // can_send_hello();
     char message[256];
     send_speed();
 
@@ -158,14 +157,21 @@ void loop(){
     Serial.print(psu.actOutEnergy);
     Serial.println(" Wh");
 
-    buildPSUTelemetryPackage().toCharArray(message, 100);
-    mqtt.publish(topicOutPSU, message);
-    buildAccelTelemetryPackage().toCharArray(message, 100);
-    mqtt.publish(topicOutAccel, message);
-    tmr = millis();
+    if(psu.areDataValid){
+      buildPSUTelemetryPackage().toCharArray(message, 100);
+      mqtt.publish(topicOutPSU, message);
+    }
+
+    if(getAccelData()){
+      buildAccelTelemetryPackage().toCharArray(message, 100);
+      mqtt.publish(topicOutAccel, message);
+      can_send_accel_data();
+    }
+
+    snprintf(message, sizeof(message), "RSSI: %d", rssi);
+    mqtt.publish(topicSystem, message);
     
-    getAccelData();
-    can_send_accel_data();
+    tmr = millis();
   }
 }
 
