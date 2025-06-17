@@ -30,14 +30,15 @@
 #include <CAN.h>
 #include <FileData.h>
 #include <Wire.h>                 // Must include Wire library for I2C
-#include "SparkFun_MMA8452Q.h"    // Modification for other 845x family chips is necessary, also i2c address
+#include <Adafruit_MMA8451.h>
+#include <Adafruit_Sensor.h>
 #include <SPIFFS.h> // 3 MB APP, 1 MB SPIFFS
 
 GyverPortal ui;
 
 CRC16 crc;
 
-MMA8452Q accel(ACCEL_ADDR); 
+Adafruit_MMA8451 mma = Adafruit_MMA8451();
 
 TinyGsm        modem(SerialAT);
 TinyGsmClient client(modem);
