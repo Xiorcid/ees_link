@@ -35,10 +35,12 @@ bool gps_update(){
       Serial.print(lon2);
       Serial.print(" ");
       Serial.println(vsat2);
+      areGPSDataValid = true;
       return true;
   } else {
       Serial.println("Couldn't get GPS/GNSS/GLONASS location.");
       signaliseException(GPS_NODATA);
+      areGPSDataValid = false;
       return false;
   }
 }

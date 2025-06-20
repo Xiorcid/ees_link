@@ -12,8 +12,7 @@
 #define TINY_GSM_USE_GPRS true
 #define TINY_GSM_USE_WIFI false
 
-#define PSU_DATA_TIME 500
-#define GPS_DATA_TIME 500
+#define DATA_TIME 500
 
 // set GSM PIN, if any
 #define GSM_PIN "1528"
@@ -44,6 +43,11 @@ TinyGsm        modem(SerialAT);
 TinyGsmClient client(modem);
 PubSubClient  mqtt(client);
 
+const char *topicInPSU       = "control/" STR(CAR_ID);
+const char *topicOut         = "data";
+const char *topicSystem      = "SUS_OUT/" STR(CAR_ID);
+
+
 struct PSU_REGs{
   uint16_t actOutVoltage;
   uint16_t actCurrent;
@@ -70,6 +74,7 @@ uint8_t resetReason = 0;
 
 bool isAccelReady = false;
 bool isCANReady = false;
+bool areGPSDataValid = false;
 
 int16_t rssi;
 
@@ -88,9 +93,6 @@ void mqttCallback(char *topic, byte *payload, unsigned int len){
   }
 
   signaliseException(OK_INFO);
-  char echo_buf[256];
-  pl.toCharArray(echo_buf, len);
-  mqtt.publish(topicSystem, echo_buf);
   
   parsePSUInputData(pl);
 }
@@ -133,17 +135,10 @@ void loop(){
   mqtt_update();
   ui.tick();
   
-  if (millis() - gps_tmr > GPS_DATA_TIME){
-    if (gps_update()){
-      char message[256];
-      buildGPSTelemetryPackage().toCharArray(message, 100);
-      mqtt.publish(topicOutGPS, message);
-    }
-    gps_tmr = millis();
-  }
+  if (millis() - tmr > DATA_TIME){
+    gps_update();
 
-  if (millis() - tmr > PSU_DATA_TIME){
-    char message[256];
+    char message[512];
     send_speed();
 
     psu = readPSURegisters();
@@ -158,19 +153,16 @@ void loop(){
     Serial.print(psu.actOutEnergy);
     Serial.println(" Wh");
 
-    if(psu.areDataValid){
-      buildPSUTelemetryPackage().toCharArray(message, 100);
-      mqtt.publish(topicOutPSU, message);
-    }
-
     if(getAccelData()){
-      buildAccelTelemetryPackage().toCharArray(message, 100);
-      mqtt.publish(topicOutAccel, message);
       can_send_accel_data();
     }
 
-    snprintf(message, sizeof(message), "RSSI: %d", rssi);
-    mqtt.publish(topicSystem, message);
+    buildFullTelemetryPackage().toCharArray(message, 512);
+    mqtt.publish(topicOut, message);
+
+    Serial.print("Signal quality (RSSI): ");
+    Serial.print(rssi);
+    Serial.println(" dBm");
     
     tmr = millis();
   }

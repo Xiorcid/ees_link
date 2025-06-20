@@ -124,16 +124,13 @@ void mqtt_update(){
   mqtt.loop();
 
   rssi = -113 + (modem.getSignalQuality() * 2);
-  Serial.print("Signal quality (RSSI): ");
-  Serial.print(rssi);
-  Serial.println(" dBm");
 }
 
 bool mqttConnect(){
   SerialMon.print("Connecting to ");
   SerialMon.print(broker);
 
-  bool status = mqtt.connect(broker, mqtt_user, mqtt_pass);
+  bool status = mqtt.connect(mqtt_gsm_client_name, mqtt_user, mqtt_pass);
 
   if (status == false) {
       SerialMon.println(" fail");
